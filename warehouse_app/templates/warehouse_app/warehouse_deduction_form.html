@@ -1,0 +1,17 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Списание продукции{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Списание: {{ warehouse.nomenclature.name }}</h1>
+
+<form method="post" class="card p-4 shadow-sm">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning">Списать</button>
+        <a href="{% url 'warehouse_list' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}

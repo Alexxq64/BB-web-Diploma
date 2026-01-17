@@ -1,0 +1,58 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Справочник номенклатуры{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Справочник номенклатуры</h1>
+
+<!-- Кнопка добавления новой позиции -->
+{% if perms.warehouse_app.add_nomenclature %}
+<div class="mb-3">
+    <a href="{% url 'nomenclature_add' %}" class="btn btn-success">Добавить новую позицию</a>
+</div>
+{% endif %}
+
+<!-- Форма поиска -->
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Поиск по коду или наименованию"
+            value="{{ query }}"
+        >
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </div>
+</form>
+
+<!-- Таблица -->
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Код</th>
+                <th>Наименование</th>
+                <th>Ед. изм.</th>
+                <th>Срок годности (дн.)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.code }}</td>
+                <td>{{ item.name }}</td>
+                <td>{{ item.unit }}</td>
+                <td>{{ item.shelf_life_days }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">Ничего не найдено</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

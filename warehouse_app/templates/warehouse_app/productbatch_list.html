@@ -1,0 +1,71 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Поступления{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Поступления продукции</h1>
+
+<!-- Кнопка "Оформить" -->
+<div class="mb-4">
+    <a href="{% url 'productbatch_create' %}" class="btn btn-success">Оформить новую партию</a>
+</div>
+
+<!-- Форма поиска / фильтрации -->
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Поиск по номеру партии или номенклатуре"
+            value="{{ query }}"
+        >
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </div>
+</form>
+
+<!-- Таблица партий -->
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Номер партии</th>
+                <th>Номенклатура</th>
+                <th>Вес (кг)</th>
+                <th>Дата производства</th>
+                <th>Дата приёмки</th>
+                <th>Срок годности</th>
+                <th>Действие</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for batch in batches %}
+            <tr>
+                <td>{{ batch.batch_number }}</td>
+                <td>{{ batch.nomenclature.name }}</td>
+                <td>{{ batch.weight_kg }}</td>
+                <td>{{ batch.production_date }}</td>
+                <td>{{ batch.reception_date }}</td>
+                <td>{{ batch.expiration_date }}</td>
+                <td>
+                    {% if not batch.reception_date %}
+                    <form method="post" action="{% url 'productbatch_receive' batch.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-primary">Принять</button>
+                    </form>
+                    {% else %}
+                    <span class="text-success">Принята</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Ничего не найдено</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

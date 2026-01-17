@@ -1,0 +1,38 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Склад{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Текущие остатки на складе</h1>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Код продукции</th>
+                <th>Наименование</th>
+                <th>Текущий остаток (кг)</th>
+                <th>Действие</th> <!-- новый столбец -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for w in warehouses %}
+            <tr>
+                <td>{{ w.nomenclature.code }}</td>
+                <td>{{ w.nomenclature.name }}</td>
+                <td>{{ w.current_weight_kg }}</td>
+                <td>
+                    <a href="{% url 'warehouse_deduction' w.id %}" class="btn btn-sm btn-warning">
+                        Списать
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">Склад пуст</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

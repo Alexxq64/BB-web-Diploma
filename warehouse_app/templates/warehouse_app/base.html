@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Система учёта склада{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Свой стиль -->
+    <link href="{% static 'warehouse_app/css/style.css' %}" rel="stylesheet">
+</head>
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+<!-- Шапка -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="/">Склад</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Переключатель навигации">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Главная</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/warehouse/">Склад</a>  <!-- ← новая ссылка -->
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/nomenclature/">Номенклатура</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/productbatch/">Поступления</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/operation/">Операции</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'export_page' %}">Экспорт</a>
+                </li>
+
+
+                <!-- Авторизация -->
+                {% if user.is_authenticated %}
+                    <li class="nav-item d-flex align-items-center">
+                        <span class="nav-link disabled mb-0 me-2">{{ user.username }}</span>
+                        <form method="post" action="{% url 'logout' %}" class="d-inline mb-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link p-0 nav-link align-self-center">Выйти</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">Вход</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+
+
+<!-- Контент -->
+<div class="container flex-grow-1 mb-5">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<!-- Подвал -->
+<footer class="bg-primary text-white py-3 mt-auto">
+    <div class="container text-center">
+        © 2026 ООО «Брянский Бройлер» — Система учёта склада
+    </div>
+</footer>
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

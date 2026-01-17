@@ -1,0 +1,29 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Экспорт данных{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Экспорт данных в Excel</h1>
+
+<p>Выберите, какие данные вы хотите экспортировать:</p>
+
+<form method="post" class="card p-4 shadow-sm">
+    {% csrf_token %}
+    <div class="mb-3">
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="export_type" id="export_operations" value="operations" checked>
+            <label class="form-check-label" for="export_operations">
+                Журнал операций
+            </label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="export_type" id="export_warehouse" value="warehouse">
+            <label class="form-check-label" for="export_warehouse">
+                Складские остатки
+            </label>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-success">Экспортировать</button>
+</form>
+{% endblock %}

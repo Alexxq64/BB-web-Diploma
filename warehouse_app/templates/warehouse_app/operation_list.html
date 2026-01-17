@@ -1,0 +1,53 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Журнал операций{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Журнал операций</h1>
+
+<!-- Форма поиска / фильтрации -->
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Поиск по номеру партии или номенклатуре"
+            value="{{ query }}"
+        >
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </div>
+</form>
+
+<!-- Таблица операций -->
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Партия</th>
+                <th>Тип операции</th>
+                <th>Дата операции</th>
+                <th>Количество</th>
+                <th>Примечание</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for op in operations %}
+            <tr>
+                <td>{{ op.batch.batch_number }} — {{ op.batch.nomenclature.name }}</td>
+                <td>{{ op.operation_type }}</td>
+                <td>{{ op.operation_date }}</td>
+                <td>{{ op.quantity }}</td>
+                <td>{{ op.note }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center">Ничего не найдено</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

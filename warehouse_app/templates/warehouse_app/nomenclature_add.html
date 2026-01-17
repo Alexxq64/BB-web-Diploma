@@ -1,0 +1,41 @@
+{% extends "warehouse_app/base.html" %}
+
+{% block title %}Добавить новую номенклатуру{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Добавить новую номенклатуру</h1>
+
+<form method="post" class="row g-3">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    
+    <div class="col-md-4">
+        {{ form.code.label_tag }}
+        {{ form.code }}
+        {{ form.code.errors }}
+    </div>
+    
+    <div class="col-md-4">
+        {{ form.name.label_tag }}
+        {{ form.name }}
+        {{ form.name.errors }}
+    </div>
+    
+    <div class="col-md-4">
+        {{ form.unit.label_tag }}
+        {{ form.unit }}
+        {{ form.unit.errors }}
+    </div>
+    
+    <div class="col-md-4">
+        {{ form.shelf_life_days.label_tag }}
+        {{ form.shelf_life_days }}
+        {{ form.shelf_life_days.errors }}
+    </div>
+    
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+        <a href="{% url 'nomenclature_list' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+</form>
+{% endblock %}
