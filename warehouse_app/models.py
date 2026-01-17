@@ -69,30 +69,6 @@ class ProductBatch(models.Model):
 
         return f"Партия {self.batch_number} принята, склад обновлён"
 
-# Журнал операций
-# class Operation(models.Model):
-#     OPERATION_CHOICES = [
-#         ("reception", "Приёмка"),
-#         # можно расширять: отгрузка, списание и т.д.
-#     ]
-
-#     class Meta:
-#         verbose_name = _("Операция")
-#         verbose_name_plural = _("Операции")    
-
-#     batch = models.ForeignKey(
-#         ProductBatch, on_delete=models.CASCADE, related_name="operations"
-#     )
-#     operation_type = models.CharField(
-#         "Тип операции", max_length=50, choices=OPERATION_CHOICES, default="reception"
-#     )
-#     operation_date = models.DateTimeField("Дата операции", default=timezone.now)
-#     quantity = models.FloatField("Количество (кг)")
-#     note = models.CharField("Примечание", max_length=500, blank=True, null=True)
-
-#     def __str__(self):
-#         return f"{self.get_operation_type_display()} | {self.batch.batch_number} | {self.quantity} кг"
-
 
 class Operation(models.Model):
     OPERATION_CHOICES = [

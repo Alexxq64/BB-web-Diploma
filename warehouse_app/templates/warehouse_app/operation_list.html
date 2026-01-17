@@ -7,29 +7,35 @@
 
 <!-- Форма поиска / фильтрации -->
 <form method="get" class="row g-3 mb-4">
-    <div class="col-md-4">
-        <input
-            type="text"
-            name="q"
-            class="form-control"
-            placeholder="Поиск по номеру партии или номенклатуре"
-            value="{{ query }}"
-        >
+    <!-- Поиск -->
+    <div class="col-md-3">
+        <input type="text" name="q" class="form-control" placeholder="Поиск по партии или номенклатуре" value="{{ query }}">
     </div>
+
+    <!-- Даты -->
+    <div class="col-md-2">
+        <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+    </div>
+    <div class="col-md-2">
+        <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+    </div>
+
+    <!-- Кнопки -->
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Найти</button>
+        <a href="{% url 'operation_list' %}" class="btn btn-secondary">Сбросить</a>
     </div>
 </form>
 
-<!-- Таблица операций -->
+<!-- Таблица с сортировкой -->
 <div class="table-responsive">
     <table class="table table-bordered table-hover">
         <thead class="table-light">
             <tr>
-                <th>Партия</th>
-                <th>Тип операции</th>
-                <th>Дата операции</th>
-                <th>Количество</th>
+                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'batch__batch_number' %}-batch__batch_number{% else %}batch__batch_number{% endif %}">Партия</a></th>
+                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_type' %}-operation_type{% else %}operation_type{% endif %}">Тип операции</a></th>
+                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_date' %}-operation_date{% else %}operation_date{% endif %}">Дата операции</a></th>
+                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'quantity' %}-quantity{% else %}quantity{% endif %}">Количество</a></th>
                 <th>Примечание</th>
             </tr>
         </thead>
@@ -50,4 +56,55 @@
         </tbody>
     </table>
 </div>
+
+<!-- Пагинация -->
+<nav>
+  <ul class="pagination">
+    {% if operations.has_previous %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ operations.previous_page_number }}&q={{ query }}&start_date={{ start_date }}&end_date={{ end_date }}&order_by={{ order_by }}">Назад</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Назад</span></li>
+    {% endif %}
+
+    {% for num in operations.paginator.page_range %}
+      {% if operations.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% else %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ num }}&q={{ query }}&start_date={{ start_date }}&end_date={{ end_date }}&order_by={{ order_by }}">{{ num }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {% if operations.has_next %}
+      <li class="page-item">
+        <a class="page-link" href="?page={{ operations.next_page_number }}&q={{ query }}&start_date={{ start_date }}&end_date={{ end_date }}&order_by={{ order_by }}">Вперед</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Вперед</span></li>
+    {% endif %}
+  </ul>
+</nav>
+
+<!-- JS для контроля диапазона дат -->
+<script>
+const startInput = document.querySelector('input[name="start_date"]');
+const endInput = document.querySelector('input[name="end_date"]');
+
+startInput.addEventListener('change', () => {
+    if (endInput.value && startInput.value > endInput.value) {
+        endInput.value = startInput.value;
+    }
+});
+
+endInput.addEventListener('change', () => {
+    if (startInput.value && endInput.value < startInput.value) {
+        startInput.value = endInput.value;
+    }
+});
+</script>
+
 {% endblock %}
+

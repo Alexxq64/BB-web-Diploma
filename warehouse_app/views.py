@@ -38,7 +38,7 @@ def nomenclature_list(request):
 def productbatch_list(request):
     query = request.GET.get('q', '')
     if query:
-        items = ProductBatch.objects.filter(
+        batches = ProductBatch.objects.filter(
             models.Q(batch_number__icontains=query) |
             models.Q(nomenclature__name__icontains=query)
         )
@@ -53,23 +53,70 @@ def productbatch_list(request):
         }
     )
 
+
+from django.core.paginator import Paginator
+from django.utils.dateparse import parse_date
+from datetime import datetime, time, timedelta
+
 def operation_list(request):
     query = request.GET.get('q', '')
+    start_date_str = request.GET.get('start_date', '')
+    end_date_str = request.GET.get('end_date', '')
+    order_by = request.GET.get('order_by', '-operation_date')
+    page_number = request.GET.get('page', 1)
+
+    operations = Operation.objects.all()
+
+    # Фильтр по тексту
     if query:
-        items = Operation.objects.filter(
+        operations = operations.filter(
             models.Q(batch__batch_number__icontains=query) |
             models.Q(batch__nomenclature__name__icontains=query)
         )
-    else:
-        operations = Operation.objects.all()
+
+    # Фильтр по диапазону дат с учётом времени
+    start_datetime = None
+    end_datetime = None
+
+    if start_date_str:
+        # начало дня
+        start_dt = parse_date(start_date_str)
+        if start_dt:
+            start_datetime = datetime.combine(start_dt, time.min)
+
+    if end_date_str:
+        # конец дня
+        end_dt = parse_date(end_date_str)
+        if end_dt:
+            end_datetime = datetime.combine(end_dt, time.max)
+
+    if start_datetime and end_datetime:
+        operations = operations.filter(operation_date__range=[start_datetime, end_datetime])
+    elif start_datetime:
+        operations = operations.filter(operation_date__gte=start_datetime)
+    elif end_datetime:
+        operations = operations.filter(operation_date__lte=end_datetime)
+
+    # Сортировка
+    operations = operations.order_by(order_by)
+
+    # Пагинация
+    paginator = Paginator(operations, 10)  # 10 записей на страницу
+    page_obj = paginator.get_page(page_number)
+
     return render(
         request,
         'warehouse_app/operation_list.html',
         {
-            'operations': operations,
+            'operations': page_obj,
             'query': query,
+            'start_date': start_date_str,
+            'end_date': end_date_str,
+            'order_by': order_by,
         }
     )
+
+
 
 @login_required
 @permission_required('warehouse_app.add_nomenclature', raise_exception=True)

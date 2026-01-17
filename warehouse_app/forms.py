@@ -15,24 +15,6 @@ class NomenclatureForm(forms.ModelForm):
 
 from .models import ProductBatch
 
-# class ProductBatchForm(forms.ModelForm):
-#     class Meta:
-#         model = ProductBatch
-#         fields = [
-#             'batch_number',
-#             'nomenclature',
-#             'weight_kg',
-#             'production_date',
-#             'expiration_date',  
-#         ]
-#         widgets = {
-#             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
-#             'nomenclature': forms.Select(attrs={'class': 'form-select'}),
-#             'weight_kg': forms.NumberInput(attrs={'class': 'form-control'}),
-#             'production_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-#             'expiration_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),  
-#         }
-
 
 from django import forms
 from .models import ProductBatch
