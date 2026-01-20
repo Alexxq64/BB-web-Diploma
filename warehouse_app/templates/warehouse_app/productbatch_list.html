@@ -5,41 +5,107 @@
 {% block content %}
 <h1 class="mb-4">Поступления продукции</h1>
 
-<!-- Кнопка "Оформить" -->
-<div class="mb-4">
+<!-- Кнопка "Оформить новое поступление" -->
+<div class="mb-3">
     <a href="{% url 'productbatch_create' %}" class="btn btn-success">Оформить новую партию</a>
 </div>
 
-<!-- Форма поиска / фильтрации -->
-<form method="get" class="row g-3 mb-4">
+<!-- Строка поиска и кнопки -->
+<form method="get" class="mb-4 row g-2 align-items-end">
     <div class="col-md-4">
-        <input
-            type="text"
-            name="q"
-            class="form-control"
-            placeholder="Поиск по номеру партии или номенклатуре"
-            value="{{ query }}"
-        >
+        <input type="text" name="q" class="form-control"
+               placeholder="Поиск по номеру партии или номенклатуре"
+               value="{{ query }}">
     </div>
     <div class="col-auto">
         <button type="submit" class="btn btn-primary">Найти</button>
+        <a href="{% url 'productbatch_list' %}" class="btn btn-secondary">Сброс</a>
     </div>
 </form>
 
-<!-- Таблица партий -->
+<style>
+/* убираем границы только у строк заголовка с фильтрами */
+thead tr.filter-row th {
+    border: none !important;
+    background: transparent !important;
+    padding-bottom: 4px;
+}
+</style>
+
 <div class="table-responsive">
     <table class="table table-bordered table-hover">
         <thead class="table-light">
+
+            <!-- Фильтры по дате -->
+            <tr class="filter-row">
+                <th colspan="3"></th>
+                <th>
+                    <input type="date" name="start_production_date" class="form-control"
+                           value="{{ start_production_date }}">
+                </th>
+                <th>
+                    <input type="date" name="start_reception_date" class="form-control"
+                           value="{{ start_reception_date }}">
+                </th>
+                <th>
+                    <input type="date" name="start_expiration_date" class="form-control"
+                           value="{{ start_expiration_date }}">
+                </th>
+                <th></th>
+            </tr>
+            <tr class="filter-row">
+                <th colspan="3"></th>
+                <th>
+                    <input type="date" name="end_production_date" class="form-control"
+                           value="{{ end_production_date }}">
+                </th>
+                <th>
+                    <input type="date" name="end_reception_date" class="form-control"
+                           value="{{ end_reception_date }}">
+                </th>
+                <th>
+                    <input type="date" name="end_expiration_date" class="form-control"
+                           value="{{ end_expiration_date }}">
+                </th>
+                <th></th>
+            </tr>
+
+            <!-- Заголовки -->
             <tr>
-                <th>Номер партии</th>
-                <th>Номенклатура</th>
-                <th>Вес (кг)</th>
-                <th>Дата производства</th>
-                <th>Дата приёмки</th>
-                <th>Срок годности</th>
+                <th>
+                    <a href="?sort=batch_number&direction={% if sort == 'batch_number' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Номер партии
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort=nomenclature__name&direction={% if sort == 'nomenclature__name' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Номенклатура
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort=weight_kg&direction={% if sort == 'weight_kg' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Вес (кг)
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort=production_date&direction={% if sort == 'production_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Дата производства
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort=reception_date&direction={% if sort == 'reception_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Дата приёмки
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort=expiration_date&direction={% if sort == 'expiration_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Срок годности
+                    </a>
+                </th>
                 <th>Действие</th>
             </tr>
         </thead>
+
         <tbody>
             {% for batch in batches %}
             <tr>
@@ -51,10 +117,16 @@
                 <td>{{ batch.expiration_date }}</td>
                 <td>
                     {% if not batch.reception_date %}
-                    <form method="post" action="{% url 'productbatch_receive' batch.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-primary">Принять</button>
-                    </form>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <!-- Добавлена кнопка редактирования -->
+                        <a href="{% url 'productbatch_edit' batch.id %}" class="btn btn-sm btn-warning">
+                            Редактировать
+                        </a>
+                        <form method="post" action="{% url 'productbatch_receive' batch.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-primary">Принять</button>
+                        </form>
+                    </div>
                     {% else %}
                     <span class="text-success">Принята</span>
                     {% endif %}
@@ -68,4 +140,63 @@
         </tbody>
     </table>
 </div>
+
+<!-- Пагинация -->
+<nav>
+  <ul class="pagination">
+    {% if batches.has_previous %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?page={{ batches.previous_page_number }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+           Назад
+        </a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Назад</span></li>
+    {% endif %}
+
+    {% for num in batches.paginator.page_range %}
+      {% if batches.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% else %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ num }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+             {{ num }}
+          </a>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {% if batches.has_next %}
+      <li class="page-item">
+        <a class="page-link"
+           href="?page={{ batches.next_page_number }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+           Вперед
+        </a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Вперед</span></li>
+    {% endif %}
+  </ul>
+</nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function syncDates(startName, endName) {
+        const start = document.getElementsByName(startName)[0];
+        const end = document.getElementsByName(endName)[0];
+        start.addEventListener('change', () => {
+            if (end.value && start.value > end.value) end.value = start.value;
+        });
+        end.addEventListener('change', () => {
+            if (start.value && end.value < start.value) start.value = end.value;
+        });
+    }
+    syncDates('start_production_date', 'end_production_date');
+    syncDates('start_reception_date', 'end_reception_date');
+    syncDates('start_expiration_date', 'end_expiration_date');
+});
+</script>
+
 {% endblock %}

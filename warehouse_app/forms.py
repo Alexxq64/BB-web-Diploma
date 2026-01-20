@@ -14,14 +14,10 @@ class NomenclatureForm(forms.ModelForm):
         }
 
 from .models import ProductBatch
-
-
-from django import forms
-from .models import ProductBatch
-
 class ProductBatchForm(forms.ModelForm):
     shelf_life_days = forms.IntegerField(
         label="Срок годности (дни)",
+        min_value=0,        
         widget=forms.NumberInput(attrs={'class': 'form-control'})
     )
 

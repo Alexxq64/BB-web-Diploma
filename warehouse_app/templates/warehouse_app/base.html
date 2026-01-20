@@ -25,25 +25,24 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="/">Главная</a>
+                    <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="/">Главная</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/warehouse/">Склад</a>  <!-- ← новая ссылка -->
+                    <a class="nav-link {% if '/warehouse/' in request.path %}active{% endif %}" href="/warehouse/">Склад</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/nomenclature/">Номенклатура</a>
+                    <a class="nav-link {% if '/nomenclature/' in request.path %}active{% endif %}" href="/nomenclature/">Номенклатура</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/productbatch/">Поступления</a>
+                    <a class="nav-link {% if '/productbatch/' in request.path %}active{% endif %}" href="/productbatch/">Поступления</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/operation/">Операции</a>
+                    <a class="nav-link {% if '/operation/' in request.path %}active{% endif %}" href="/operation/">Операции</a>
                 </li>
-
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'export_page' %}">Экспорт</a>
+                    {% url 'export_page' as export_url %}
+                    <a class="nav-link {% if export_url in request.path %}active{% endif %}" href="{{ export_url }}">Экспорт</a>
                 </li>
-
 
                 <!-- Авторизация -->
                 {% if user.is_authenticated %}
@@ -56,15 +55,13 @@
                     </li>
                 {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'login' %}">Вход</a>
+                        <a class="nav-link {% if '/login/' in request.path %}active{% endif %}" href="{% url 'login' %}">Вход</a>
                     </li>
                 {% endif %}
             </ul>
         </div>
     </div>
 </nav>
-
-
 
 <!-- Контент -->
 <div class="container flex-grow-1 mb-5">

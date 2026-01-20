@@ -3,7 +3,7 @@ from django.db import models
 from .models import Nomenclature
 from .models import ProductBatch
 from .models import Operation
-from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
+from django.contrib.auth.decorators import login_required, permission_required
 from .forms import NomenclatureForm, WarehouseDeductionForm
 from warehouse_app.models import Warehouse
 from warehouse_app.forms import ProductBatchForm
@@ -15,48 +15,104 @@ from django.views.decorators.http import require_POST
 def index(request):
     return render(request, 'warehouse_app/index.html')
 
+from django.core.paginator import Paginator
+
 @login_required
 def nomenclature_list(request):
-    # Для оператора и админа разрешаем добавление новой позиции
-    can_add = request.user.has_perm('warehouse_app.add_nomenclature')
-    
     query = request.GET.get('q', '')
+
+    sort = request.GET.get('sort', 'code')
+    direction = request.GET.get('direction', 'asc')
+    order_by = sort if direction == 'asc' else f'-{sort}'
+
+    items = Nomenclature.objects.all()
+
     if query:
-        items = Nomenclature.objects.filter(
-            models.Q(code__icontains=query) | models.Q(name__icontains=query)
+        items = items.filter(
+            models.Q(code__icontains=query) |
+            models.Q(name__icontains=query)
         )
-    else:
-        items = Nomenclature.objects.all()
+
+    items = items.order_by(order_by)
+
+    paginator = Paginator(items, 10)
+    page_number = request.GET.get('page')
+    items_page = paginator.get_page(page_number)
 
     return render(request, 'warehouse_app/nomenclature_list.html', {
-        'items': items,
+        'items': items_page,
         'query': query,
-        'can_add': can_add,  # передаём флаг в шаблон
+        'sort': sort,
+        'direction': direction,
     })
 
+from datetime import datetime
 
 def productbatch_list(request):
+    batches = ProductBatch.objects.all()
+    
+    # --- Поиск ---
     query = request.GET.get('q', '')
     if query:
-        batches = ProductBatch.objects.filter(
+        batches = batches.filter(
             models.Q(batch_number__icontains=query) |
             models.Q(nomenclature__name__icontains=query)
         )
-    else:
-        batches = ProductBatch.objects.all()
-    return render(
-        request,
-        'warehouse_app/productbatch_list.html',
-        {
-            'batches': batches,
-            'query': query,
-        }
-    )
+
+    # --- Фильтры по датам ---
+    start_production_date = request.GET.get('start_production_date', '')
+    end_production_date = request.GET.get('end_production_date', '')
+    start_reception_date = request.GET.get('start_reception_date', '')
+    end_reception_date = request.GET.get('end_reception_date', '')
+    start_expiration_date = request.GET.get('start_expiration_date', '')
+    end_expiration_date = request.GET.get('end_expiration_date', '')
+
+    if start_production_date:
+        batches = batches.filter(production_date__gte=start_production_date)
+    if end_production_date:
+        batches = batches.filter(production_date__lte=end_production_date)
+
+    if start_reception_date:
+        batches = batches.filter(reception_date__date__gte=start_reception_date)
+    if end_reception_date:
+        batches = batches.filter(reception_date__date__lte=end_reception_date)
+
+    if start_expiration_date:
+        batches = batches.filter(expiration_date__gte=start_expiration_date)
+    if end_expiration_date:
+        batches = batches.filter(expiration_date__lte=end_expiration_date)
+
+    # --- Сортировка ---
+    sort = request.GET.get('sort', 'production_date')
+    direction = request.GET.get('direction', 'asc')
+    if direction == 'desc':
+        sort = '-' + sort
+    batches = batches.order_by(sort)
+
+    # --- Пагинация ---
+    paginator = Paginator(batches, 10)  # 10 партий на страницу
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # --- Контекст для шаблона ---
+    context = {
+        'batches': page_obj,
+        'query': query,
+        'sort': request.GET.get('sort', ''),
+        'direction': request.GET.get('direction', ''),
+        'start_production_date': start_production_date,
+        'end_production_date': end_production_date,
+        'start_reception_date': start_reception_date,
+        'end_reception_date': end_reception_date,
+        'start_expiration_date': start_expiration_date,
+        'end_expiration_date': end_expiration_date,
+    }
+
+    return render(request, 'warehouse_app/productbatch_list.html', context)
 
 
-from django.core.paginator import Paginator
 from django.utils.dateparse import parse_date
-from datetime import datetime, time, timedelta
+from datetime import time
 
 def operation_list(request):
     query = request.GET.get('q', '')
@@ -131,33 +187,65 @@ def nomenclature_add(request):
     return render(request, 'warehouse_app/nomenclature_add.html', {'form': form})
 
 
+from .models import Warehouse
+
+
 def warehouse_list(request):
-    warehouses = Warehouse.objects.select_related('nomenclature').all()
+    query = request.GET.get('q', '')
+
+    sort = request.GET.get('sort', 'nomenclature__code')
+    direction = request.GET.get('direction', 'asc')
+    order_by = sort if direction == 'asc' else f'-{sort}'
+
+    warehouses = Warehouse.objects.select_related('nomenclature')
+
+    if query:
+        warehouses = warehouses.filter(
+            models.Q(nomenclature__code__icontains=query) |
+            models.Q(nomenclature__name__icontains=query)
+        )
+
+    warehouses = warehouses.order_by(order_by)
+
+    paginator = Paginator(warehouses, 10)
+    page_number = request.GET.get('page')
+    warehouses_page = paginator.get_page(page_number)
+
     return render(
         request,
         'warehouse_app/warehouse_list.html',
         {
-            'warehouses': warehouses
+            'warehouses': warehouses_page,
+            'query': query,
+            'sort': sort,
+            'direction': direction,
         }
     )
 
 
-def productbatch_create(request):
+@login_required
+def productbatch_create(request, batch_id=None):
+    if batch_id:
+        batch = get_object_or_404(ProductBatch, pk=batch_id)
+        form = ProductBatchForm(request.POST or None, instance=batch)
+    else:
+        batch = None
+        form = ProductBatchForm(request.POST or None)
+
     if request.method == "POST":
-        form = ProductBatchForm(request.POST)
         if form.is_valid():
             batch = form.save(commit=False)
-            batch.reception_date = None  # партия оформлена, но не принята
+            if not batch_id:
+                batch.reception_date = None  # новая партия оформлена, но не принята
             batch.save()
             return redirect("productbatch_list")
-    else:
-        form = ProductBatchForm()
 
     return render(
         request,
         "warehouse_app/productbatch_form.html",
         {
-            "form": form
+            "form": form,
+            "batch": batch
         }
     )
 
@@ -168,9 +256,6 @@ def productbatch_receive(request, batch_id):
     messages.success(request, result)
     return redirect("productbatch_list")
 
-
-from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect
 
 def warehouse_deduction(request, warehouse_id):
     warehouse = get_object_or_404(Warehouse, pk=warehouse_id)
@@ -208,7 +293,6 @@ def warehouse_deduction(request, warehouse_id):
 # warehouse_app/views.py
 import openpyxl
 from django.http import HttpResponse
-from .models import Operation, Warehouse
 from django.contrib.auth.decorators import login_required
 
 @login_required
