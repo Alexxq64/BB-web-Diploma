@@ -1,6 +1,8 @@
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.db.models import ProtectedError
+
 
 # Справочник видов продукции
 class Nomenclature(models.Model):
@@ -13,15 +15,48 @@ class Nomenclature(models.Model):
         verbose_name = _("Номенклатура")
         verbose_name_plural = _("Номенклатура")
 
-
     def __str__(self):
         return f"{self.code} - {self.name}"
+    
+    def delete(self, *args, **kwargs):
+        """
+        Запрещает удаление номенклатуры, если она используется в системе.
+        Проверяет наличие связанных записей в партиях, операциях и на складе.
+        """
+        # Проверяем наличие связанных записей в партиях
+        if self.batches.exists():
+            raise ProtectedError(
+                f'Невозможно удалить номенклатуру "{self.name}" (код: {self.code}). '
+                f'Существуют связанные партии продукции.',
+                self
+            )
+        
+        # Проверяем наличие связанных записей в операциях
+        if self.operations.exists():
+            raise ProtectedError(
+                f'Невозможно удалить номенклатуру "{self.name}" (код: {self.code}). '
+                f'Существуют связанные операции.',
+                self
+            )
+        
+        # Проверяем наличие записи на складе
+        if hasattr(self, 'warehouse_item'):
+            raise ProtectedError(
+                f'Невозможно удалить номенклатуру "{self.name}" (код: {self.code}). '
+                f'Существует запись на складе.',
+                self
+            )
+        
+        # Если связанных записей нет - удаляем
+        super().delete(*args, **kwargs)
 
 
 # Партия продукции
 class ProductBatch(models.Model):
     nomenclature = models.ForeignKey(
-        Nomenclature, on_delete=models.CASCADE, related_name="batches"
+        Nomenclature, 
+        on_delete=models.PROTECT,  # Изменено с CASCADE на PROTECT
+        related_name="batches"
     )
     batch_number = models.CharField("Номер партии", max_length=100)
     weight_kg = models.FloatField("Вес партии (кг)")
@@ -32,7 +67,6 @@ class ProductBatch(models.Model):
     class Meta:
         verbose_name = _("Партия товара")
         verbose_name_plural = _("Партии товара")
-
 
     def __str__(self):
         return f"{self.nomenclature.code} - {self.nomenclature.name} | {self.batch_number}"
@@ -69,6 +103,11 @@ class ProductBatch(models.Model):
 
         return f"Партия {self.batch_number} принята, склад обновлён"
 
+    @property
+    def status(self):
+        """Возвращает статус партии на основе reception_date"""
+        return "Принята" if self.reception_date else "Оформлена"
+
 
 class Operation(models.Model):
     OPERATION_CHOICES = [
@@ -89,6 +128,15 @@ class Operation(models.Model):
         null=True,
         verbose_name="Партия"
     )
+    # Добавляем прямую связь с номенклатурой для списаний
+    nomenclature = models.ForeignKey(
+        Nomenclature,
+        on_delete=models.PROTECT,  # Защищаем удаление номенклатуры
+        related_name="operations",
+        blank=True,
+        null=True,
+        verbose_name="Номенклатура"
+    )
     operation_type = models.CharField(
         "Тип операции",
         max_length=50,
@@ -107,13 +155,20 @@ class Operation(models.Model):
     def __str__(self):
         type_display = self.get_operation_type_display()
         batch_number = self.batch.batch_number if self.batch else "—"
-        return f"{type_display} | {batch_number} | {self.quantity} кг"
-
+        nomenclature_name = self.nomenclature.name if self.nomenclature else (self.batch.nomenclature.name if self.batch else "—")
+        return f"{type_display} | {nomenclature_name} | {batch_number} | {self.quantity} кг"
     
+    def save(self, *args, **kwargs):
+        """Автоматически заполняем nomenclature для операций списания"""
+        if self.operation_type == "deduction" and not self.nomenclature:
+            raise ValueError("Для операций списания необходимо указать номенклатуру")
+        super().save(*args, **kwargs)
+
+
 class Warehouse(models.Model):
     nomenclature = models.OneToOneField(
         Nomenclature,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,  # Изменено с CASCADE на PROTECT
         related_name="warehouse_item"
     )
     current_weight_kg = models.FloatField("Текущий остаток (кг)", default=0)
@@ -124,4 +179,3 @@ class Warehouse(models.Model):
 
     def __str__(self):
         return f"{self.nomenclature.name} | {self.current_weight_kg} кг"
-

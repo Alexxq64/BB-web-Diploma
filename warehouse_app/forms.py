@@ -49,19 +49,36 @@ class WarehouseDeductionForm(forms.Form):
     quantity = forms.FloatField(
         label="Количество (кг)",
         min_value=0.01,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01',
+            'placeholder': 'Введите количество'
+        })
     )
     reason = forms.CharField(
         label="Причина списания",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        max_length=200,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Например: брак, порча, внутренние нужды'
+        })
     )
     document = forms.CharField(
-        label="Документ",
+        label="Документ-основание",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Номер акта, накладной, приказа'
+        })
     )
     note = forms.CharField(
         label="Примечание",
         required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2})
+        max_length=500,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control', 
+            'rows': 3,
+            'placeholder': 'Дополнительная информация'
+        })
     )

@@ -1,17 +1,108 @@
 {% extends "warehouse_app/base.html" %}
 
-{% block title %}Списание продукции{% endblock %}
+{% block title %}Списание: {{ warehouse.nomenclature.name }}{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Списание: {{ warehouse.nomenclature.name }}</h1>
-
-<form method="post" class="card p-4 shadow-sm">
-    {% csrf_token %}
-    {{ form.as_p }}
-
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-warning">Списать</button>
-        <a href="{% url 'warehouse_list' %}" class="btn btn-secondary">Отмена</a>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-trash"></i> Списание продукции
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5 class="alert-heading">{{ warehouse.nomenclature.name }}</h5>
+                        <p class="mb-1">
+                            <strong>Код:</strong> {{ warehouse.nomenclature.code }}<br>
+                            <strong>Ед. измерения:</strong> {{ warehouse.nomenclature.unit }}<br>
+                            <strong>Доступно на складе:</strong> 
+                            <span class="badge bg-primary">{{ warehouse.current_weight_kg|floatformat:2 }} кг</span>
+                        </p>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if messages %}
+                            <div class="mb-3">
+                                {% for message in messages %}
+                                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Количество -->
+                        <div class="mb-3">
+                            <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                                {{ form.quantity.label }}
+                                <span class="text-muted">(макс. {{ max_quantity|floatformat:2 }} кг)</span>
+                            </label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                                <div class="text-danger small">
+                                    {{ form.quantity.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Причина списания -->
+                        <div class="mb-3">
+                            <label for="{{ form.reason.id_for_label }}" class="form-label">
+                                {{ form.reason.label }}
+                            </label>
+                            {{ form.reason }}
+                            {% if form.reason.errors %}
+                                <div class="text-danger small">
+                                    {{ form.reason.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Документ -->
+                        <div class="mb-3">
+                            <label for="{{ form.document.id_for_label }}" class="form-label">
+                                {{ form.document.label }}
+                            </label>
+                            {{ form.document }}
+                            {% if form.document.errors %}
+                                <div class="text-danger small">
+                                    {{ form.document.errors }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Номер акта, накладной, приказа или иного документа</div>
+                        </div>
+                        
+                        <!-- Примечание -->
+                        <div class="mb-4">
+                            <label for="{{ form.note.id_for_label }}" class="form-label">
+                                {{ form.note.label }}
+                            </label>
+                            {{ form.note }}
+                            {% if form.note.errors %}
+                                <div class="text-danger small">
+                                    {{ form.note.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-warning me-md-2">
+                                <i class="bi bi-check-circle"></i> Подтвердить списание
+                            </button>
+                            <a href="{% url 'warehouse_list' %}" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Отмена
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-</form>
+</div>
 {% endblock %}

@@ -258,35 +258,82 @@ def productbatch_receive(request, batch_id):
 
 
 def warehouse_deduction(request, warehouse_id):
+    """
+    Оформление списания продукции со склада.
+    warehouse_id - ID записи склада (Warehouse), содержащей номенклатуру
+    """
     warehouse = get_object_or_404(Warehouse, pk=warehouse_id)
+    
+    # Максимальное доступное количество для списания
+    max_quantity = warehouse.current_weight_kg
 
     if request.method == "POST":
         form = WarehouseDeductionForm(request.POST)
+        
         if form.is_valid():
             qty = form.cleaned_data['quantity']
-            if qty > warehouse.current_weight_kg:
-                messages.error(request, "Нельзя списать больше, чем есть на складе")
-            else:
-                # создаём операцию списания
+            reason = form.cleaned_data['reason']
+            document = form.cleaned_data.get('document', '')
+            note = form.cleaned_data.get('note', '')
+            
+            # Проверка достаточности остатков
+            if qty > max_quantity:
+                messages.error(
+                    request, 
+                    f"Недостаточно остатков на складе. "
+                    f"Доступно: {max_quantity:.2f} кг, "
+                    f"требуется: {qty:.2f} кг"
+                )
+                return render(request, 'warehouse_app/warehouse_deduction_form.html', {
+                    'warehouse': warehouse,
+                    'form': form,
+                    'max_quantity': max_quantity
+                })
+            
+            try:
+                # Создаём операцию списания с привязкой к номенклатуре
                 Operation.objects.create(
-                    batch=None,  # или привязать к партии, если нужно
+                    batch=None,  # Списание не привязано к конкретной партии
+                    nomenclature=warehouse.nomenclature,  # Привязываем к номенклатуре
                     operation_type="deduction",
                     quantity=qty,
-                    note=form.cleaned_data.get('note', ''),
-                    reason=form.cleaned_data['reason'],
-                    document=form.cleaned_data.get('document', ''),
+                    reason=reason,
+                    document=document,
+                    note=note
                 )
-                # обновляем склад
+                
+                # Обновляем остатки на складе
                 warehouse.current_weight_kg -= qty
                 warehouse.save()
-                messages.success(request, f"Списание {qty} кг выполнено")
-            return redirect('warehouse_list')
+                
+                messages.success(
+                    request, 
+                    f"Списание оформлено успешно. "
+                    f"Списано: {qty:.2f} кг {warehouse.nomenclature.name}. "
+                    f"Остаток на складе: {warehouse.current_weight_kg:.2f} кг"
+                )
+                
+                # Перенаправляем на страницу склада
+                return redirect('warehouse_list')
+                
+            except Exception as e:
+                messages.error(
+                    request, 
+                    f"Ошибка при оформлении списания: {str(e)}"
+                )
+                return render(request, 'warehouse_app/warehouse_deduction_form.html', {
+                    'warehouse': warehouse,
+                    'form': form,
+                    'max_quantity': max_quantity
+                })
     else:
+        # GET-запрос: создаем пустую форму
         form = WarehouseDeductionForm()
 
     return render(request, 'warehouse_app/warehouse_deduction_form.html', {
         'warehouse': warehouse,
-        'form': form
+        'form': form,
+        'max_quantity': max_quantity
     })
 
 
