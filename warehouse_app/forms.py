@@ -1,6 +1,7 @@
 from django import forms
 from .models import Nomenclature
 from django.utils import timezone
+import json
 
 class NomenclatureForm(forms.ModelForm):
     class Meta:
@@ -13,7 +14,10 @@ class NomenclatureForm(forms.ModelForm):
             'shelf_life_days': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
-from .models import ProductBatch
+from .models import ProductBatch, Nomenclature
+from django.utils import timezone
+import json
+
 class ProductBatchForm(forms.ModelForm):
     shelf_life_days = forms.IntegerField(
         label="Срок годности (дни)",
@@ -31,11 +35,34 @@ class ProductBatchForm(forms.ModelForm):
         ]
         widgets = {
             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'nomenclature': forms.Select(attrs={'class': 'form-select'}),
+            'nomenclature': forms.Select(attrs={'class': 'form-select', 'id': 'id_nomenclature'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-            'production_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'production_date': forms.DateInput(
+                attrs={
+                    'class': 'form-control', 
+                    'type': 'date'
+                },
+                format='%Y-%m-%d'  # ← ДОБАВИТЬ формат
+            ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Заполняем shelf_life_days при редактировании
+        if self.instance and self.instance.pk:
+            if self.instance.production_date and self.instance.expiration_date:
+                delta = self.instance.expiration_date - self.instance.production_date
+                self.fields['shelf_life_days'].initial = delta.days
+        
+        # Сохраняем queryset для JavaScript
+        if 'nomenclature' in self.fields:
+            queryset = self.fields['nomenclature'].queryset
+            units_dict = {str(item.id): item.unit for item in queryset}
+            
+            # Добавляем data-атрибут к виджету
+            self.fields['nomenclature'].widget.attrs['data-units'] = json.dumps(units_dict)
+    
     def save(self, commit=True):
         batch = super().save(commit=False)
         days = self.cleaned_data['shelf_life_days']
@@ -43,7 +70,6 @@ class ProductBatchForm(forms.ModelForm):
         if commit:
             batch.save()
         return batch
-    
 
 class WarehouseDeductionForm(forms.Form):
     # Убираем поле quantity

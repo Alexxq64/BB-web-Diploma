@@ -184,11 +184,30 @@ def nomenclature_add(request):
             form.save()
             return redirect('nomenclature_list')
     else:
-        form = NomenclatureForm()
+        # Автогенерация кода номенклатуры: NOM001, NOM002, ...
+        
+        # Находим максимальный существующий номер
+        last_nomenclature = Nomenclature.objects.filter(
+            code__startswith='NOM'
+        ).order_by('code').last()
+        
+        if last_nomenclature:
+            try:
+                # Извлекаем числовую часть: NOM001 → 1
+                last_num = int(last_nomenclature.code[3:])  # Убираем 'NOM'
+                next_num = last_num + 1
+            except (ValueError, IndexError):
+                next_num = 1
+        else:
+            next_num = 1
+        
+        # Форматируем: 1 → '001', 25 → '025', 123 → '123'
+        suggested_code = f'NOM{next_num:03d}'
+        
+        # Создаем форму с предзаполненным кодом
+        form = NomenclatureForm(initial={'code': suggested_code})
+    
     return render(request, 'warehouse_app/nomenclature_add.html', {'form': form})
-
-
-from .models import Warehouse
 
 
 def warehouse_list(request):
@@ -227,18 +246,75 @@ def warehouse_list(request):
 @login_required
 def productbatch_create(request, batch_id=None):
     if batch_id:
+        # Режим редактирования существующей партии
         batch = get_object_or_404(ProductBatch, pk=batch_id)
-        form = ProductBatchForm(request.POST or None, instance=batch)
+        
+        # Вычисляем shelf_life_days для формы
+        shelf_life_days = 0
+        if batch.production_date and batch.expiration_date:
+            delta = batch.expiration_date - batch.production_date
+            shelf_life_days = delta.days
+        
+        # Передаем initial в форму
+        form = ProductBatchForm(
+            request.POST or None, 
+            instance=batch,
+            initial={
+                'shelf_life_days': shelf_life_days,
+                'production_date': batch.production_date
+            }
+        )
     else:
+        # Режим создания новой партии
         batch = None
-        form = ProductBatchForm(request.POST or None)
+        
+        # Генерация номера партии: TEST-NOMYYYYMMDD-XXX
+        today = timezone.now().strftime('%Y%m%d')
+        prefix = f'TEST-NOM{today}-'
+        
+        # Находим последний номер на сегодня
+        last_batch = ProductBatch.objects.filter(
+            batch_number__startswith=prefix
+        ).order_by('batch_number').last()
+        
+        if last_batch:
+            # Извлекаем последний номер и увеличиваем
+            try:
+                last_num = int(last_batch.batch_number.split('-')[-1])
+                next_num = f'{last_num + 1:03d}'  # 001, 002, ...
+            except (ValueError, IndexError):
+                next_num = '001'
+        else:
+            next_num = '001'
+        
+        suggested_number = f'{prefix}{next_num}'
+        
+        # Создаем форму с предзаполненным номером
+        form = ProductBatchForm(request.POST or None, initial={'batch_number': suggested_number})
+        
+        # Если передана номенклатура через GET - предзаполняем
+        nomenclature_id = request.GET.get('nomenclature_id')
+        if nomenclature_id and not request.POST:
+            try:
+                nomenclature = Nomenclature.objects.get(id=nomenclature_id)
+                form.initial['nomenclature'] = nomenclature
+            except Nomenclature.DoesNotExist:
+                pass
 
     if request.method == "POST":
         if form.is_valid():
             batch = form.save(commit=False)
             if not batch_id:
-                batch.reception_date = None  # новая партия оформлена, но не принята
+                batch.reception_date = None
             batch.save()
+            
+            if not batch_id and batch.nomenclature:
+                LiveBatch.objects.create(
+                    product_batch=batch,
+                    current_quantity=batch.quantity,
+                    is_active=True
+                )
+                
             return redirect("productbatch_list")
 
     return render(
@@ -246,7 +322,7 @@ def productbatch_create(request, batch_id=None):
         "warehouse_app/productbatch_form.html",
         {
             "form": form,
-            "batch": batch
+            "batch": batch,
         }
     )
 
@@ -260,6 +336,7 @@ def productbatch_receive(request, batch_id):
 
 from django.utils import timezone
 
+@login_required
 def warehouse_deduction(request, warehouse_id):
     """
     Оформление списания продукции со склада по партиям.
@@ -280,6 +357,28 @@ def warehouse_deduction(request, warehouse_id):
         reason = request.POST.get('reason', '').strip()
         document = request.POST.get('document', '').strip()
         note = request.POST.get('note', '').strip()
+        
+        # Если документ не указан - генерируем автоматически
+        if not document:
+            # Генерация номера документа: SALE-001, SALE-002, ...
+            today = timezone.now().strftime('%Y%m%d')
+            prefix = f'SALE-{today}-'
+            
+            # Находим последний номер списания на сегодня
+            last_operation = Operation.objects.filter(
+                document__startswith=prefix
+            ).order_by('document').last()
+            
+            if last_operation:
+                try:
+                    last_num = int(last_operation.document.split('-')[-1])
+                    next_num = f'{last_num + 1:03d}'
+                except (ValueError, IndexError):
+                    next_num = '001'
+            else:
+                next_num = '001'
+            
+            document = f'{prefix}{next_num}'
         
         if not reason:
             messages.error(request, "Укажите причину списания")
@@ -331,7 +430,7 @@ def warehouse_deduction(request, warehouse_id):
                     operation_type="deduction",
                     quantity=qty,
                     reason=reason,
-                    document=document,
+                    document=document,  # Используем сгенерированный номер
                     note=note
                 )
                 
@@ -356,7 +455,7 @@ def warehouse_deduction(request, warehouse_id):
             
             messages.success(
                 request,
-                f"Списание оформлено. "
+                f"Списание оформлено (документ: {document}). "
                 f"Списано {total_deducted:.2f} {warehouse.nomenclature.unit} из {len(batches_processed)} партий. "
                 f"Партии: {', '.join(batches_processed)}"
             )
@@ -364,8 +463,29 @@ def warehouse_deduction(request, warehouse_id):
         return redirect('warehouse_list')
     
     else:
-        # GET-запрос: создаем форму (без поля quantity)
-        form = WarehouseDeductionForm()
+        # GET-запрос: создаем форму с автогенерацией номера документа
+        
+        # Генерация номера документа для новой формы
+        today = timezone.now().strftime('%Y%m%d')
+        prefix = f'SALE-{today}-'
+        
+        last_operation = Operation.objects.filter(
+            document__startswith=prefix
+        ).order_by('document').last()
+        
+        if last_operation:
+            try:
+                last_num = int(last_operation.document.split('-')[-1])
+                next_num = f'{last_num + 1:03d}'
+            except (ValueError, IndexError):
+                next_num = '001'
+        else:
+            next_num = '001'
+        
+        suggested_document = f'{prefix}{next_num}'
+        
+        # Создаем форму с предзаполненным номером документа
+        form = WarehouseDeductionForm(initial={'document': suggested_document})
 
     return render(request, 'warehouse_app/warehouse_deduction_form.html', {
         'warehouse': warehouse,

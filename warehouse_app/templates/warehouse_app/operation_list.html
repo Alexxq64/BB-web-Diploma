@@ -32,10 +32,42 @@
     <table class="table table-bordered table-hover">
         <thead class="table-light">
             <tr>
-                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'batch__batch_number' %}-batch__batch_number{% else %}batch__batch_number{% endif %}">Партия</a></th>
-                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_type' %}-operation_type{% else %}operation_type{% endif %}">Тип операции</a></th>
-                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_date' %}-operation_date{% else %}operation_date{% endif %}">Дата операции</a></th>
-                <th><a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'quantity' %}-quantity{% else %}quantity{% endif %}">Количество</a></th>
+                <!-- Партия -->
+                <th>
+                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'batch__batch_number' %}-batch__batch_number{% else %}batch__batch_number{% endif %}">
+                        Партия
+                    </a>
+                </th>
+                
+                <!-- Тип операции -->
+                <th>
+                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_type' %}-operation_type{% else %}operation_type{% endif %}">
+                        Тип операции
+                    </a>
+                </th>
+                
+                <!-- Дата операции -->
+                <th>
+                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'operation_date' %}-operation_date{% else %}operation_date{% endif %}">
+                        Дата операции
+                    </a>
+                </th>
+                
+                <!-- Количество -->
+                <th>
+                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'quantity' %}-quantity{% else %}quantity{% endif %}">
+                        Количество
+                    </a>
+                </th>
+                
+                <!-- Единица измерения (с сортировкой) -->
+                <th>
+                    <a href="?{% if query %}q={{ query }}&{% endif %}{% if start_date %}start_date={{ start_date }}&{% endif %}{% if end_date %}end_date={{ end_date }}&{% endif %}order_by={% if order_by == 'batch__nomenclature__unit' %}-batch__nomenclature__unit{% else %}batch__nomenclature__unit{% endif %}">
+                        Ед. изм.
+                    </a>
+                </th>
+                
+                <!-- Примечание (без сортировки) -->
                 <th>Примечание</th>
             </tr>
         </thead>
@@ -46,11 +78,12 @@
                 <td>{{ op.operation_type }}</td>
                 <td>{{ op.operation_date }}</td>
                 <td>{{ op.quantity }}</td>
+                <td>{{ op.batch.nomenclature.unit }}</td>
                 <td>{{ op.note }}</td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center">Ничего не найдено</td>
+                <td colspan="6" class="text-center">Ничего не найдено</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -107,4 +140,3 @@ endInput.addEventListener('change', () => {
 </script>
 
 {% endblock %}
-

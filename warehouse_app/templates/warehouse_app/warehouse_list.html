@@ -33,8 +33,13 @@
                     </a>
                 </th>
                 <th>
+                    <a href="?q={{ query }}&sort=nomenclature__unit&direction={% if sort == 'nomenclature__unit' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                        Ед. изм.
+                    </a>
+                </th>
+                <th>
                     <a href="?q={{ query }}&sort=current_quantity&direction={% if sort == 'current_quantity' and direction == 'asc' %}desc{% else %}asc{% endif %}">
-                        Текущий остаток (кг)
+                        Текущий остаток
                     </a>
                 </th>
                 <th>Действие</th>
@@ -45,6 +50,7 @@
             <tr>
                 <td>{{ w.nomenclature.code }}</td>
                 <td>{{ w.nomenclature.name }}</td>
+                <td>{{ w.nomenclature.unit }}</td>
                 <td>{{ w.current_quantity }}</td>
                 <td>
                     <a href="{% url 'warehouse_deduction' w.id %}"
@@ -55,7 +61,7 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" class="text-center">Склад пуст</td>
+                <td colspan="5" class="text-center">Склад пуст</td>
             </tr>
             {% endfor %}
         </tbody>

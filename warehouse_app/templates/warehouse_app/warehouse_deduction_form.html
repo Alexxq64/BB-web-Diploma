@@ -50,8 +50,8 @@
                                         <tr>
                                             <th>Номер партии</th>
                                             <th>Остаток</th>
-                                            <th>Срок годности</th>
-                                            <th>Осталось дней</th>
+                                            <th>Годен до</th>
+                                            <th>Осталось</th>
                                             <th>Списать</th>
                                             <th>
                                                 <button type="button" class="btn btn-sm btn-outline-primary" 
@@ -69,7 +69,7 @@
                                             <td>
                                                 {% with days_remaining=batch.expiration_date|timeuntil:now %}
                                                 <span class="badge {% if days_remaining < 3 %}bg-danger{% elif days_remaining < 7 %}bg-warning{% else %}bg-success{% endif %}">
-                                                    {{ days_remaining }} дн.
+                                                    {{ days_remaining }}
                                                 </span>
                                                 {% endwith %}
                                             </td>

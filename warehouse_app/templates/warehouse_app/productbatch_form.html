@@ -1,45 +1,125 @@
 {% extends "warehouse_app/base.html" %}
 
-{% block title %}Оформление партии{% endblock %}
+{% block title %}{% if batch %}Редактирование{% else %}Оформление{% endif %} партии{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Оформление партии</h1>
+<div class="container mt-4">
+    <h1 class="mb-4">{% if batch %}Редактирование{% else %}Оформление{% endif %} партии</h1>
 
-<form method="post" class="card p-4 shadow-sm">
-    {% csrf_token %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <!-- Номенклатура -->
+                <div class="mb-3">
+                    <label for="{{ form.nomenclature.id_for_label }}" class="form-label">
+                        {{ form.nomenclature.label }}
+                    </label>
+                    {{ form.nomenclature }}
+                    {% if form.nomenclature.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.nomenclature.errors }}
+                        </div>
+                    {% endif %}
+                </div>
 
-    <div class="mb-3">
-        <label class="form-label">Номенклатура</label>
-        {{ form.nomenclature }}
+                <!-- Номер партии -->
+                <div class="mb-3">
+                    <label for="{{ form.batch_number.id_for_label }}" class="form-label">
+                        {{ form.batch_number.label }}
+                    </label>
+                    {{ form.batch_number }}
+                    {% if form.batch_number.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.batch_number.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Количество с динамической единицей измерения -->
+                <div class="mb-3">
+                    <label for="{{ form.quantity.id_for_label }}" class="form-label">
+                        Количество <span id="unit-display" class="text-success fw-bold"></span>
+                    </label>
+                    {{ form.quantity }}
+                    {% if form.quantity.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.quantity.errors }}
+                        </div>
+                    {% endif %}
+                    <div class="form-text">
+                        <span id="unit-hint">Выберите номенклатуру для отображения единицы измерения</span>
+                    </div>
+                </div>
+
+                <!-- Дата производства -->
+                <div class="mb-3">
+                    <label for="{{ form.production_date.id_for_label }}" class="form-label">
+                        {{ form.production_date.label }}
+                    </label>
+                    {{ form.production_date }}
+                    {% if form.production_date.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.production_date.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Срок годности (дни) -->
+                <div class="mb-3">
+                    <label for="{{ form.shelf_life_days.id_for_label }}" class="form-label">
+                        {{ form.shelf_life_days.label }}
+                    </label>
+                    {{ form.shelf_life_days }}
+                    {% if form.shelf_life_days.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.shelf_life_days.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Кнопки -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success px-4">
+                        {% if batch %}Сохранить изменения{% else %}Оформить партию{% endif %}
+                    </button>
+                    <a href="{% url 'productbatch_list' %}" class="btn btn-secondary">
+                        Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
+</div>
 
-    <div class="mb-3">
-        <label class="form-label">Номер партии</label>
-        {{ form.batch_number }}
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Вес, кг</label>
-        {{ form.quantity }}
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Дата производства</label>
-        {{ form.production_date }}
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Срок годности</label>
-        {{ form.shelf_life_days }}
-    </div>
-
-    <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-success">
-            Оформить
-        </button>
-        <a href="{% url 'productbatch_list' %}" class="btn btn-secondary">
-            Отмена
-        </a>
-    </div>
-</form>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nomenclatureSelect = document.getElementById('id_nomenclature');
+    const unitDisplay = document.getElementById('unit-display');
+    const unitHint = document.getElementById('unit-hint');
+    
+    // Получаем units из data-атрибута select
+    const unitsData = nomenclatureSelect.dataset.units;
+    const units = unitsData ? JSON.parse(unitsData) : {};
+    
+    function updateUnitDisplay() {
+        const selectedId = nomenclatureSelect.value;
+        
+        if (selectedId && units[selectedId]) {
+            const unit = units[selectedId];
+            unitDisplay.textContent = '(' + unit + ')';
+            unitHint.textContent = 'Единица измерения: ' + unit;
+            unitHint.style.color = '#198754';
+        } else {
+            unitDisplay.textContent = '';
+            unitHint.textContent = 'Выберите номенклатуру для отображения единицы измерения';
+            unitHint.style.color = '';
+        }
+    }
+    
+    updateUnitDisplay();
+    nomenclatureSelect.addEventListener('change', updateUnitDisplay);
+});
+</script>
 {% endblock %}
