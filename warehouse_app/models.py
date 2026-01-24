@@ -59,7 +59,7 @@ class ProductBatch(models.Model):
         related_name="batches"
     )
     batch_number = models.CharField("Номер партии", max_length=100)
-    weight_kg = models.FloatField("Вес партии (кг)")
+    quantity = models.FloatField("Количество")
     production_date = models.DateField("Дата производства")
     reception_date = models.DateTimeField("Дата приёмки", default=None, blank=True, null=True)
     expiration_date = models.DateField("Срок годности")
@@ -85,17 +85,22 @@ class ProductBatch(models.Model):
         Operation.objects.create(
             batch=self,
             operation_type="reception",
-            quantity=self.weight_kg,
+            quantity=self.quantity,
             note=note
         )
 
         # обновляем склад
         warehouse, created = Warehouse.objects.get_or_create(
             nomenclature=self.nomenclature,
-            defaults={'current_weight_kg': 0}
+            defaults={'current_quantity': 0}
         )
-        warehouse.current_weight_kg += self.weight_kg
+        warehouse.current_quantity += self.quantity
         warehouse.save()
+
+        # создаём запись LiveBatch для новой активной партии
+        LiveBatch.objects.create(
+            product_batch=self,
+            current_quantity=self.quantity)
 
         # помечаем партию как принятую
         self.reception_date = timezone.now()
@@ -147,7 +152,7 @@ class Operation(models.Model):
         "Дата операции",
         default=timezone.now
     )
-    quantity = models.FloatField("Количество (кг)")
+    quantity = models.FloatField("Количество")
     reason = models.CharField("Причина списания", max_length=200, blank=True, null=True)
     document = models.CharField("Документ", max_length=100, blank=True, null=True)
     note = models.CharField("Примечание", max_length=500, blank=True, null=True)
@@ -171,11 +176,33 @@ class Warehouse(models.Model):
         on_delete=models.PROTECT,  # Изменено с CASCADE на PROTECT
         related_name="warehouse_item"
     )
-    current_weight_kg = models.FloatField("Текущий остаток (кг)", default=0)
+    current_quantity = models.FloatField("Текущий остаток", default=0)
 
     class Meta:
         verbose_name = _("Склад")
         verbose_name_plural = _("Склад")
 
     def __str__(self):
-        return f"{self.nomenclature.name} | {self.current_weight_kg} кг"
+        return f"{self.nomenclature.name} | {self.current_quantity} кг"
+
+    
+from django.core.validators import MinValueValidator
+class LiveBatch(models.Model):
+    """Оперативный индекс активных партий с ненулевым остатком"""
+    product_batch = models.OneToOneField(
+        ProductBatch, 
+        on_delete=models.CASCADE,
+        related_name="live_batch"
+    )
+    current_quantity = models.FloatField(
+        "Текущий остаток", 
+        default=0,
+        validators=[MinValueValidator(0)]  # ← проверка на >= 0
+    )
+    
+    class Meta:
+        verbose_name = "Активная партия"
+        verbose_name_plural = "Активные партии"
+    
+    def __str__(self):
+        return f"{self.product_batch.batch_number} | {self.current_quantity} {self.product_batch.nomenclature.unit}"

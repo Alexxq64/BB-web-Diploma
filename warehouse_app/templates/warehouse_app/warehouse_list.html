@@ -33,7 +33,7 @@
                     </a>
                 </th>
                 <th>
-                    <a href="?q={{ query }}&sort=current_weight_kg&direction={% if sort == 'current_weight_kg' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="?q={{ query }}&sort=current_quantity&direction={% if sort == 'current_quantity' and direction == 'asc' %}desc{% else %}asc{% endif %}">
                         Текущий остаток (кг)
                     </a>
                 </th>
@@ -45,7 +45,7 @@
             <tr>
                 <td>{{ w.nomenclature.code }}</td>
                 <td>{{ w.nomenclature.name }}</td>
-                <td>{{ w.current_weight_kg }}</td>
+                <td>{{ w.current_quantity }}</td>
                 <td>
                     <a href="{% url 'warehouse_deduction' w.id %}"
                        class="btn btn-sm btn-warning">

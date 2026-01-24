@@ -26,13 +26,13 @@ class ProductBatchForm(forms.ModelForm):
         fields = [
             'batch_number',
             'nomenclature',
-            'weight_kg',
+            'quantity',
             'production_date',
         ]
         widgets = {
             'batch_number': forms.TextInput(attrs={'class': 'form-control'}),
             'nomenclature': forms.Select(attrs={'class': 'form-select'}),
-            'weight_kg': forms.NumberInput(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'production_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
         }
 
@@ -46,15 +46,7 @@ class ProductBatchForm(forms.ModelForm):
     
 
 class WarehouseDeductionForm(forms.Form):
-    quantity = forms.FloatField(
-        label="Количество (кг)",
-        min_value=0.01,
-        widget=forms.NumberInput(attrs={
-            'class': 'form-control',
-            'step': '0.01',
-            'placeholder': 'Введите количество'
-        })
-    )
+    # Убираем поле quantity
     reason = forms.CharField(
         label="Причина списания",
         max_length=200,

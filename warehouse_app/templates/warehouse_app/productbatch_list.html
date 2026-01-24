@@ -83,7 +83,7 @@ thead tr.filter-row th {
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=weight_kg&direction={% if sort == 'weight_kg' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="?sort=quantity&direction={% if sort == 'quantity' and direction == 'asc' %}desc{% else %}asc{% endif %}">
                         Вес (кг)
                     </a>
                 </th>
@@ -111,7 +111,7 @@ thead tr.filter-row th {
             <tr>
                 <td>{{ batch.batch_number }}</td>
                 <td>{{ batch.nomenclature.name }}</td>
-                <td>{{ batch.weight_kg }}</td>
+                <td>{{ batch.quantity }}</td>
                 <td>{{ batch.production_date }}</td>
                 <td>{{ batch.reception_date }}</td>
                 <td>{{ batch.expiration_date }}</td>

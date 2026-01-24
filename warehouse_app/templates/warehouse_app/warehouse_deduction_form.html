@@ -5,11 +5,11 @@
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-10">
             <div class="card shadow-sm">
                 <div class="card-header bg-warning text-white">
                     <h4 class="mb-0">
-                        <i class="bi bi-trash"></i> Списание продукции
+                        <i class="bi bi-trash"></i> Списание продукции по партиям
                     </h4>
                 </div>
                 <div class="card-body">
@@ -19,10 +19,11 @@
                             <strong>Код:</strong> {{ warehouse.nomenclature.code }}<br>
                             <strong>Ед. измерения:</strong> {{ warehouse.nomenclature.unit }}<br>
                             <strong>Доступно на складе:</strong> 
-                            <span class="badge bg-primary">{{ warehouse.current_weight_kg|floatformat:2 }} кг</span>
+                            <span class="badge bg-primary">{{ warehouse.current_quantity|floatformat:2 }} {{ warehouse.nomenclature.unit }}</span>
                         </p>
                     </div>
                     
+                    <!-- ФОРМА НАЧИНАЕТСЯ ЗДЕСЬ -->
                     <form method="post">
                         {% csrf_token %}
                         
@@ -37,19 +38,77 @@
                             </div>
                         {% endif %}
                         
-                        <!-- Количество -->
-                        <div class="mb-3">
-                            <label for="{{ form.quantity.id_for_label }}" class="form-label">
-                                {{ form.quantity.label }}
-                                <span class="text-muted">(макс. {{ max_quantity|floatformat:2 }} кг)</span>
-                            </label>
-                            {{ form.quantity }}
-                            {% if form.quantity.errors %}
-                                <div class="text-danger small">
-                                    {{ form.quantity.errors }}
-                                </div>
-                            {% endif %}
+                        <!-- Таблица активных партий ВНУТРИ формы -->
+                        {% if live_batches %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">Активные партии</h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Номер партии</th>
+                                            <th>Остаток</th>
+                                            <th>Срок годности</th>
+                                            <th>Осталось дней</th>
+                                            <th>Списать</th>
+                                            <th>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        id="check-all-btn">Всё</button>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for lb in live_batches %}
+                                        {% with batch=lb.product_batch %}
+                                        <tr>
+                                            <td>{{ batch.batch_number }}</td>
+                                            <td>{{ lb.current_quantity|floatformat:2 }} {{ batch.nomenclature.unit }}</td>
+                                            <td>{{ batch.expiration_date|date:"d.m.Y" }}</td>
+                                            <td>
+                                                {% with days_remaining=batch.expiration_date|timeuntil:now %}
+                                                <span class="badge {% if days_remaining < 3 %}bg-danger{% elif days_remaining < 7 %}bg-warning{% else %}bg-success{% endif %}">
+                                                    {{ days_remaining }} дн.
+                                                </span>
+                                                {% endwith %}
+                                            </td>
+                                            <td style="width: 150px;">
+                                                <input type="number" 
+                                                       name="batch_{{ lb.id }}"
+                                                       class="form-control form-control-sm batch-qty"
+                                                       min="0" 
+                                                       max="{{ lb.current_quantity }}"
+                                                       step="0.001"
+                                                       value="0">
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary set-max-btn"
+                                                        data-target="batch_{{ lb.id }}"
+                                                        data-max="{{ lb.current_quantity }}">
+                                                    Макс
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endwith %}
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-secondary">
+                                            <td><strong>ИТОГО к списанию:</strong></td>
+                                            <td colspan="3"></td>
+                                            <td><span id="total-deduction">0.00</span> {{ warehouse.nomenclature.unit }}</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
                         </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            Нет активных партий для списания.
+                        </div>
+                        {% endif %}
                         
                         <!-- Причина списания -->
                         <div class="mb-3">
@@ -100,9 +159,47 @@
                             </a>
                         </div>
                     </form>
+                    <!-- ФОРМА ЗАКАНЧИВАЕТСЯ ЗДЕСЬ -->
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- JavaScript для кнопок "Макс" и "Всё" -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Кнопка "Макс" для каждой строки
+    document.querySelectorAll('.set-max-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetName = this.dataset.target;
+            const maxValue = parseFloat(this.dataset.max);
+            const input = document.querySelector(`input[name="${targetName}"]`);
+            input.value = maxValue.toFixed(3);
+            updateTotal();
+        });
+    });
+    
+    // Кнопка "Всё"
+    document.getElementById('check-all-btn').addEventListener('click', function() {
+        document.querySelectorAll('.set-max-btn').forEach(btn => {
+            btn.click();
+        });
+    });
+    
+    // Обновление итоговой суммы при изменении полей ввода
+    document.querySelectorAll('.batch-qty').forEach(input => {
+        input.addEventListener('input', updateTotal);
+    });
+    
+    function updateTotal() {
+        let total = 0;
+        document.querySelectorAll('.batch-qty').forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            total += value;
+        });
+        document.getElementById('total-deduction').textContent = total.toFixed(2);
+    }
+});
+</script>
 {% endblock %}

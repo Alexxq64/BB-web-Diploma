@@ -43,7 +43,7 @@ class NomenclatureAdmin(admin.ModelAdmin):
 
 @admin.register(ProductBatch)
 class ProductBatchAdmin(admin.ModelAdmin):
-    list_display = ("batch_number", "nomenclature", "weight_kg", "production_date", "reception_date", "expiration_date", "status_display")
+    list_display = ("batch_number", "nomenclature", "quantity", "production_date", "reception_date", "expiration_date", "status_display")
     list_filter = ("nomenclature", "production_date", "expiration_date", "reception_date")
     search_fields = ("batch_number", "nomenclature__name")
     
@@ -81,10 +81,32 @@ class OperationAdmin(admin.ModelAdmin):
 
 @admin.register(Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ("nomenclature", "current_weight_kg", "get_unit")
+    list_display = ("nomenclature", "current_quantity", "get_unit")
     search_fields = ("nomenclature__name", "nomenclature__code")
     
     def get_unit(self, obj):
         """Отображаем единицу измерения"""
         return obj.nomenclature.unit
     get_unit.short_description = "Ед. изм."
+
+
+from .models import LiveBatch
+
+@admin.register(LiveBatch)
+class LiveBatchAdmin(admin.ModelAdmin):
+    list_display = ('product_batch', 'current_quantity', 'nomenclature', 'batch_number', 'expiration_date')
+    list_filter = ('product_batch__nomenclature',)
+    search_fields = ('product_batch__batch_number', 'product_batch__nomenclature__name')
+    
+    # Вычисляемые поля для отображения
+    def nomenclature(self, obj):
+        return obj.product_batch.nomenclature
+    nomenclature.short_description = "Номенклатура"
+    
+    def batch_number(self, obj):
+        return obj.product_batch.batch_number
+    batch_number.short_description = "Номер партии"
+    
+    def expiration_date(self, obj):
+        return obj.product_batch.expiration_date
+    expiration_date.short_description = "Срок годности"

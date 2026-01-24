@@ -3,6 +3,7 @@ from django.db import models
 from .models import Nomenclature
 from .models import ProductBatch
 from .models import Operation
+from .models import LiveBatch
 from django.contrib.auth.decorators import login_required, permission_required
 from .forms import NomenclatureForm, WarehouseDeductionForm
 from warehouse_app.models import Warehouse
@@ -257,44 +258,76 @@ def productbatch_receive(request, batch_id):
     return redirect("productbatch_list")
 
 
+from django.utils import timezone
+
 def warehouse_deduction(request, warehouse_id):
     """
-    Оформление списания продукции со склада.
-    warehouse_id - ID записи склада (Warehouse), содержащей номенклатуру
+    Оформление списания продукции со склада по партиям.
     """
     warehouse = get_object_or_404(Warehouse, pk=warehouse_id)
     
-    # Максимальное доступное количество для списания
-    max_quantity = warehouse.current_weight_kg
+    # Получаем активные партии по этой номенклатуре
+    live_batches = LiveBatch.objects.filter(
+        product_batch__nomenclature=warehouse.nomenclature
+    ).select_related(
+        'product_batch', 
+        'product_batch__nomenclature'
+    ).order_by('product_batch__expiration_date')
 
     if request.method == "POST":
-        form = WarehouseDeductionForm(request.POST)
+        # Обработка списания по партиям
+        print(f"DEBUG: POST данные batch_ поля: {[f'{k}={v}' for k, v in request.POST.items() if k.startswith('batch_')]}")
+        reason = request.POST.get('reason', '').strip()
+        document = request.POST.get('document', '').strip()
+        note = request.POST.get('note', '').strip()
         
-        if form.is_valid():
-            qty = form.cleaned_data['quantity']
-            reason = form.cleaned_data['reason']
-            document = form.cleaned_data.get('document', '')
-            note = form.cleaned_data.get('note', '')
+        if not reason:
+            messages.error(request, "Укажите причину списания")
+            return redirect('warehouse_deduction', warehouse_id=warehouse.id)
+        
+        operations_created = []
+        total_deducted = 0
+        batches_processed = []
+        
+        # Проверяем, что хотя бы одна партия выбрана
+        has_selection = False
+        for lb in live_batches:
+            qty_str = request.POST.get(f'batch_{lb.id}', '').strip()
+            if qty_str:  # если строка не пустая
+                try:
+                    qty = float(qty_str)
+                    if qty > 0:
+                        has_selection = True
+                        break
+                except ValueError:
+                    continue  # если не число - пропускаем
+
+        if not has_selection:
+            messages.error(request, "Выберите хотя бы одну партию для списания")
+            return redirect('warehouse_deduction', warehouse_id=warehouse.id)
+
+
+        for lb in live_batches:
+            field_name = f"batch_{lb.id}"
+            qty_str = request.POST.get(field_name, '0').strip()
             
-            # Проверка достаточности остатков
-            if qty > max_quantity:
-                messages.error(
-                    request, 
-                    f"Недостаточно остатков на складе. "
-                    f"Доступно: {max_quantity:.2f} кг, "
-                    f"требуется: {qty:.2f} кг"
-                )
-                return render(request, 'warehouse_app/warehouse_deduction_form.html', {
-                    'warehouse': warehouse,
-                    'form': form,
-                    'max_quantity': max_quantity
-                })
-            
+            if not qty_str or float(qty_str) <= 0:
+                continue
+                
             try:
-                # Создаём операцию списания с привязкой к номенклатуре
+                qty = float(qty_str)
+                if qty > lb.current_quantity:
+                    messages.error(
+                        request, 
+                        f"Недостаточно в партии {lb.product_batch.batch_number}. "
+                        f"Доступно: {lb.current_quantity:.2f}, запрошено: {qty:.2f}"
+                    )
+                    return redirect('warehouse_deduction', warehouse_id=warehouse.id)
+                
+                # Создаём операцию списания для этой партии
                 Operation.objects.create(
-                    batch=None,  # Списание не привязано к конкретной партии
-                    nomenclature=warehouse.nomenclature,  # Привязываем к номенклатуре
+                    batch=lb.product_batch,
+                    nomenclature=warehouse.nomenclature,
                     operation_type="deduction",
                     quantity=qty,
                     reason=reason,
@@ -302,40 +335,44 @@ def warehouse_deduction(request, warehouse_id):
                     note=note
                 )
                 
-                # Обновляем остатки на складе
-                warehouse.current_weight_kg -= qty
-                warehouse.save()
+                # Обновляем LiveBatch
+                lb.current_quantity -= qty
+                if lb.current_quantity == 0:
+                    lb.delete()  # партия полностью списана
+                else:
+                    lb.save()
                 
-                messages.success(
-                    request, 
-                    f"Списание оформлено успешно. "
-                    f"Списано: {qty:.2f} кг {warehouse.nomenclature.name}. "
-                    f"Остаток на складе: {warehouse.current_weight_kg:.2f} кг"
-                )
+                total_deducted += qty
+                batches_processed.append(f"{lb.product_batch.batch_number} ({qty:.2f})")
                 
-                # Перенаправляем на страницу склада
-                return redirect('warehouse_list')
-                
-            except Exception as e:
-                messages.error(
-                    request, 
-                    f"Ошибка при оформлении списания: {str(e)}"
-                )
-                return render(request, 'warehouse_app/warehouse_deduction_form.html', {
-                    'warehouse': warehouse,
-                    'form': form,
-                    'max_quantity': max_quantity
-                })
+            except ValueError:
+                messages.error(request, f"Некорректное количество для партии {lb.product_batch.batch_number}")
+                return redirect('warehouse_deduction', warehouse_id=warehouse.id)
+        
+        # Обновляем общий остаток на складе
+        if total_deducted > 0:
+            warehouse.current_quantity -= total_deducted
+            warehouse.save()
+            
+            messages.success(
+                request,
+                f"Списание оформлено. "
+                f"Списано {total_deducted:.2f} {warehouse.nomenclature.unit} из {len(batches_processed)} партий. "
+                f"Партии: {', '.join(batches_processed)}"
+            )
+        
+        return redirect('warehouse_list')
+    
     else:
-        # GET-запрос: создаем пустую форму
+        # GET-запрос: создаем форму (без поля quantity)
         form = WarehouseDeductionForm()
 
     return render(request, 'warehouse_app/warehouse_deduction_form.html', {
         'warehouse': warehouse,
         'form': form,
-        'max_quantity': max_quantity
+        'live_batches': live_batches,
+        'now': timezone.now().date()
     })
-
 
 # warehouse_app/views.py
 import openpyxl
@@ -378,7 +415,7 @@ def export_data(request):
             ws.append(["Код продукции", "Наименование", "Текущий остаток (кг)"])
             warehouses = Warehouse.objects.select_related('nomenclature').all()
             for w in warehouses:
-                ws.append([w.nomenclature.code, w.nomenclature.name, w.current_weight_kg])
+                ws.append([w.nomenclature.code, w.nomenclature.name, w.current_quantity])
         else:
             return HttpResponse("Неверный тип экспорта", status=400)
 
