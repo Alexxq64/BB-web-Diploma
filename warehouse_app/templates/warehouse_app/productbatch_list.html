@@ -10,96 +10,136 @@
     <a href="{% url 'productbatch_create' %}" class="btn btn-success">Оформить новую партию</a>
 </div>
 
-<!-- Строка поиска и кнопки -->
-<form method="get" class="mb-4 row g-2 align-items-end">
-    <div class="col-md-4">
-        <input type="text" name="q" class="form-control"
-               placeholder="Поиск по номеру партии или номенклатуре"
-               value="{{ query }}">
+<!-- ВСЕ фильтры должны быть в одной форме -->
+<form method="get" class="mb-4" id="filter-form">
+    
+    <!-- Строка поиска и кнопки -->
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-4">
+            <input type="text" name="q" class="form-control"
+                   placeholder="Поиск по номеру партии или номенклатуре"
+                   value="{{ query }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Найти</button>
+            <a href="{% url 'productbatch_list' %}" class="btn btn-secondary">Сброс</a>
+        </div>
     </div>
-    <div class="col-auto">
-        <button type="submit" class="btn btn-primary">Найти</button>
-        <a href="{% url 'productbatch_list' %}" class="btn btn-secondary">Сброс</a>
+    
+    <!-- Фильтры по датам -->
+    <div class="row g-2 align-items-end mb-3">
+        <div class="col-md-4">
+            <label class="form-label small mb-1">Дата производства</label>
+            <div class="row g-1">
+                <div class="col">
+                    <input type="date" name="start_production_date" class="form-control form-control-sm"
+                           value="{{ start_production_date }}">
+                </div>
+                <div class="col-auto align-self-center">—</div>
+                <div class="col">
+                    <input type="date" name="end_production_date" class="form-control form-control-sm"
+                           value="{{ end_production_date }}">
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label small mb-1">Дата приёмки</label>
+            <div class="row g-1">
+                <div class="col">
+                    <input type="date" name="start_reception_date" class="form-control form-control-sm"
+                           value="{{ start_reception_date }}">
+                </div>
+                <div class="col-auto align-self-center">—</div>
+                <div class="col">
+                    <input type="date" name="end_reception_date" class="form-control form-control-sm"
+                           value="{{ end_reception_date }}">
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <label class="form-label small mb-1">Срок годности</label>
+            <div class="row g-1">
+                <div class="col">
+                    <input type="date" name="start_expiration_date" class="form-control form-control-sm"
+                           value="{{ start_expiration_date }}">
+                </div>
+                <div class="col-auto align-self-center">—</div>
+                <div class="col">
+                    <input type="date" name="end_expiration_date" class="form-control form-control-sm"
+                           value="{{ end_expiration_date }}">
+                </div>
+            </div>
+        </div>
     </div>
+    
+    <!-- Скрытые поля для сортировки -->
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="direction" value="{{ direction }}">
+    <input type="hidden" name="page" value="1">
+    
 </form>
 
 <style>
-/* убираем границы только у строк заголовка с фильтрами */
-thead tr.filter-row th {
-    border: none !important;
-    background: transparent !important;
-    padding-bottom: 4px;
+/* Стили для правильного отображения фильтров */
+.form-label.small {
+    font-size: 0.875rem;
+    font-weight: 500;
 }
 </style>
 
 <div class="table-responsive">
     <table class="table table-bordered table-hover">
         <thead class="table-light">
-
-            <!-- Фильтры по дате -->
-            <tr class="filter-row">
-                <th colspan="3"></th>
-                <th>
-                    <input type="date" name="start_production_date" class="form-control"
-                           value="{{ start_production_date }}">
-                </th>
-                <th>
-                    <input type="date" name="start_reception_date" class="form-control"
-                           value="{{ start_reception_date }}">
-                </th>
-                <th>
-                    <input type="date" name="start_expiration_date" class="form-control"
-                           value="{{ start_expiration_date }}">
-                </th>
-                <th></th>
-            </tr>
-            <tr class="filter-row">
-                <th colspan="3"></th>
-                <th>
-                    <input type="date" name="end_production_date" class="form-control"
-                           value="{{ end_production_date }}">
-                </th>
-                <th>
-                    <input type="date" name="end_reception_date" class="form-control"
-                           value="{{ end_reception_date }}">
-                </th>
-                <th>
-                    <input type="date" name="end_expiration_date" class="form-control"
-                           value="{{ end_expiration_date }}">
-                </th>
-                <th></th>
-            </tr>
-
-            <!-- Заголовки -->
+            <!-- Заголовки с сортировкой -->
             <tr>
                 <th>
-                    <a href="?sort=batch_number&direction={% if sort == 'batch_number' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="batch_number">
                         Номер партии
+                        {% if sort == 'batch_number' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=nomenclature__name&direction={% if sort == 'nomenclature__name' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="nomenclature__name">
                         Номенклатура
+                        {% if sort == 'nomenclature__name' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=quantity&direction={% if sort == 'quantity' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="quantity">
                         Вес (кг)
+                        {% if sort == 'quantity' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=production_date&direction={% if sort == 'production_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="production_date">
                         Дата производства
+                        {% if sort == 'production_date' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=reception_date&direction={% if sort == 'reception_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="reception_date">
                         Дата приёмки
+                        {% if sort == 'reception_date' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>
-                    <a href="?sort=expiration_date&direction={% if sort == 'expiration_date' and direction == 'asc' %}desc{% else %}asc{% endif %}">
+                    <a href="#" class="sort-link" data-sort="expiration_date">
                         Срок годности
+                        {% if sort == 'expiration_date' %}
+                            {% if direction == 'asc' %}↑{% else %}↓{% endif %}
+                        {% endif %}
                     </a>
                 </th>
                 <th>Действие</th>
@@ -147,7 +187,7 @@ thead tr.filter-row th {
     {% if batches.has_previous %}
       <li class="page-item">
         <a class="page-link"
-           href="?page={{ batches.previous_page_number }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+           href="?page={{ batches.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if sort and sort != 'production_date' %}&sort={{ sort }}{% endif %}{% if direction and direction != 'asc' %}&direction={{ direction }}{% endif %}{% if start_production_date %}&start_production_date={{ start_production_date }}{% endif %}{% if end_production_date %}&end_production_date={{ end_production_date }}{% endif %}{% if start_reception_date %}&start_reception_date={{ start_reception_date }}{% endif %}{% if end_reception_date %}&end_reception_date={{ end_reception_date }}{% endif %}{% if start_expiration_date %}&start_expiration_date={{ start_expiration_date }}{% endif %}{% if end_expiration_date %}&end_expiration_date={{ end_expiration_date }}{% endif %}">
            Назад
         </a>
       </li>
@@ -161,7 +201,7 @@ thead tr.filter-row th {
       {% else %}
         <li class="page-item">
           <a class="page-link"
-             href="?page={{ num }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+             href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}{% if sort and sort != 'production_date' %}&sort={{ sort }}{% endif %}{% if direction and direction != 'asc' %}&direction={{ direction }}{% endif %}{% if start_production_date %}&start_production_date={{ start_production_date }}{% endif %}{% if end_production_date %}&end_production_date={{ end_production_date }}{% endif %}{% if start_reception_date %}&start_reception_date={{ start_reception_date }}{% endif %}{% if end_reception_date %}&end_reception_date={{ end_reception_date }}{% endif %}{% if start_expiration_date %}&start_expiration_date={{ start_expiration_date }}{% endif %}{% if end_expiration_date %}&end_expiration_date={{ end_expiration_date }}{% endif %}">
              {{ num }}
           </a>
         </li>
@@ -171,7 +211,7 @@ thead tr.filter-row th {
     {% if batches.has_next %}
       <li class="page-item">
         <a class="page-link"
-           href="?page={{ batches.next_page_number }}&q={{ query }}&start_production_date={{ start_production_date }}&end_production_date={{ end_production_date }}&start_reception_date={{ start_reception_date }}&end_reception_date={{ end_reception_date }}&start_expiration_date={{ start_expiration_date }}&end_expiration_date={{ end_expiration_date }}&sort={{ sort }}&direction={{ direction }}">
+           href="?page={{ batches.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if sort and sort != 'production_date' %}&sort={{ sort }}{% endif %}{% if direction and direction != 'asc' %}&direction={{ direction }}{% endif %}{% if start_production_date %}&start_production_date={{ start_production_date }}{% endif %}{% if end_production_date %}&end_production_date={{ end_production_date }}{% endif %}{% if start_reception_date %}&start_reception_date={{ start_reception_date }}{% endif %}{% if end_reception_date %}&end_reception_date={{ end_reception_date }}{% endif %}{% if start_expiration_date %}&start_expiration_date={{ start_expiration_date }}{% endif %}{% if end_expiration_date %}&end_expiration_date={{ end_expiration_date }}{% endif %}">
            Вперед
         </a>
       </li>
@@ -183,20 +223,55 @@ thead tr.filter-row th {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('filter-form');
+    
+    // Обработка сортировки
+    document.querySelectorAll('.sort-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const sortField = this.dataset.sort;
+            const currentSort = document.querySelector('[name="sort"]').value;
+            const currentDirection = document.querySelector('[name="direction"]').value;
+            
+            if (currentSort === sortField) {
+                // Меняем направление, если кликаем по тому же полю
+                document.querySelector('[name="direction"]').value = 
+                    currentDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Иначе устанавливаем новое поле и направление по умолчанию
+                document.querySelector('[name="sort"]').value = sortField;
+                document.querySelector('[name="direction"]').value = 'asc';
+            }
+            
+            // Сбрасываем страницу на первую при сортировке
+            document.querySelector('[name="page"]').value = 1;
+            form.submit();
+        });
+    });
+    
+    // Синхронизация дат
     function syncDates(startName, endName) {
-        const start = document.getElementsByName(startName)[0];
-        const end = document.getElementsByName(endName)[0];
-        start.addEventListener('change', () => {
-            if (end.value && start.value > end.value) end.value = start.value;
-        });
-        end.addEventListener('change', () => {
-            if (start.value && end.value < start.value) start.value = end.value;
-        });
+        const start = document.querySelector(`[name="${startName}"]`);
+        const end = document.querySelector(`[name="${endName}"]`);
+        
+        if (start && end) {
+            start.addEventListener('change', () => {
+                if (end.value && start.value > end.value) {
+                    end.value = start.value;
+                }
+            });
+            
+            end.addEventListener('change', () => {
+                if (start.value && end.value < start.value) {
+                    start.value = end.value;
+                }
+            });
+        }
     }
+    
     syncDates('start_production_date', 'end_production_date');
     syncDates('start_reception_date', 'end_reception_date');
     syncDates('start_expiration_date', 'end_expiration_date');
 });
 </script>
-
 {% endblock %}

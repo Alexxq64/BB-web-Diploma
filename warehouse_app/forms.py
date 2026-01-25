@@ -18,6 +18,11 @@ from .models import ProductBatch, Nomenclature
 from django.utils import timezone
 import json
 
+import json
+from django import forms
+from django.utils import timezone
+from .models import ProductBatch, Nomenclature
+
 class ProductBatchForm(forms.ModelForm):
     shelf_life_days = forms.IntegerField(
         label="Срок годности (дни)",
@@ -42,7 +47,7 @@ class ProductBatchForm(forms.ModelForm):
                     'class': 'form-control', 
                     'type': 'date'
                 },
-                format='%Y-%m-%d'  # ← ДОБАВИТЬ формат
+                format='%Y-%m-%d'
             ),
         }
 
@@ -58,10 +63,20 @@ class ProductBatchForm(forms.ModelForm):
         # Сохраняем queryset для JavaScript
         if 'nomenclature' in self.fields:
             queryset = self.fields['nomenclature'].queryset
-            units_dict = {str(item.id): item.unit for item in queryset}
             
-            # Добавляем data-атрибут к виджету
+            # Создаем словари для units и стандартных сроков годности
+            units_dict = {}
+            shelf_life_dict = {}
+            
+            for item in queryset:
+                item_id = str(item.id)
+                units_dict[item_id] = item.unit
+                # Используем поле standard_shelf_life_days из модели Nomenclature
+                shelf_life_dict[item_id] = item.standard_shelf_life_days if hasattr(item, 'standard_shelf_life_days') else 0
+            
+            # Добавляем data-атрибуты к виджету
             self.fields['nomenclature'].widget.attrs['data-units'] = json.dumps(units_dict)
+            self.fields['nomenclature'].widget.attrs['data-shelf-life'] = json.dumps(shelf_life_dict)
     
     def save(self, commit=True):
         batch = super().save(commit=False)

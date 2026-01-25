@@ -83,24 +83,46 @@ def productbatch_list(request):
     if end_expiration_date:
         batches = batches.filter(expiration_date__lte=end_expiration_date)
 
-    # --- Сортировка ---
-    sort = request.GET.get('sort', 'production_date')
+    # --- Сортировка (ИСПРАВЛЕНИЕ ЗДЕСЬ) ---
+    sort_param = request.GET.get('sort')
     direction = request.GET.get('direction', 'asc')
+    
+    # Определяем валидные поля для сортировки
+    valid_sort_fields = [
+        'batch_number', 'nomenclature__name', 'quantity', 
+        'production_date', 'reception_date', 'expiration_date'
+    ]
+    
+    # Если sort_param пустой, None или не в списке - используем значение по умолчанию
+    if not sort_param or sort_param not in valid_sort_fields:
+        sort_param = 'production_date'
+    
+    # Применяем направление сортировки
     if direction == 'desc':
-        sort = '-' + sort
-    batches = batches.order_by(sort)
+        sort_param = '-' + sort_param
+    
+    batches = batches.order_by(sort_param)
 
     # --- Пагинация ---
-    paginator = Paginator(batches, 10)  # 10 партий на страницу
+    paginator = Paginator(batches, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     # --- Контекст для шаблона ---
+    # Для шаблона получаем sort без префикса '-'
+    sort_for_template = request.GET.get('sort', 'production_date')
+    if sort_for_template.startswith('-'):
+        sort_for_template = sort_for_template[1:]
+    
+    # Убираем sort из template, если он пустой
+    if not sort_for_template:
+        sort_for_template = 'production_date'
+
     context = {
         'batches': page_obj,
         'query': query,
-        'sort': request.GET.get('sort', ''),
-        'direction': request.GET.get('direction', ''),
+        'sort': sort_for_template,
+        'direction': direction,
         'start_production_date': start_production_date,
         'end_production_date': end_production_date,
         'start_reception_date': start_reception_date,
@@ -307,13 +329,6 @@ def productbatch_create(request, batch_id=None):
             if not batch_id:
                 batch.reception_date = None
             batch.save()
-            
-            if not batch_id and batch.nomenclature:
-                LiveBatch.objects.create(
-                    product_batch=batch,
-                    current_quantity=batch.quantity,
-                    is_active=True
-                )
                 
             return redirect("productbatch_list")
 
@@ -343,13 +358,24 @@ def warehouse_deduction(request, warehouse_id):
     """
     warehouse = get_object_or_404(Warehouse, pk=warehouse_id)
     
-    # Получаем активные партии по этой номенклатуре
+    # ИСПРАВЛЕНИЕ: Добавляем фильтр на принятые партии
+    # Получаем только принятые партии (с датой приёмки)
     live_batches = LiveBatch.objects.filter(
-        product_batch__nomenclature=warehouse.nomenclature
+        product_batch__nomenclature=warehouse.nomenclature,
+        product_batch__reception_date__isnull=False  # ← КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ
     ).select_related(
         'product_batch', 
         'product_batch__nomenclature'
     ).order_by('product_batch__expiration_date')
+
+    # Проверяем, есть ли вообще принятые партии для списания
+    if not live_batches.exists():
+        messages.warning(
+            request,
+            f"Нет принятых партий для списания по '{warehouse.nomenclature.name}'. "
+            f"Сначала примите партии на склад."
+        )
+        return redirect('warehouse_list')
 
     if request.method == "POST":
         # Обработка списания по партиям
