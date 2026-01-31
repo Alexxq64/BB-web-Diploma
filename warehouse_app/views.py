@@ -83,7 +83,7 @@ def productbatch_list(request):
     if end_expiration_date:
         batches = batches.filter(expiration_date__lte=end_expiration_date)
 
-    # --- Сортировка (ИСПРАВЛЕНИЕ ЗДЕСЬ) ---
+    # --- Сортировка ---
     sort_param = request.GET.get('sort')
     direction = request.GET.get('direction', 'asc')
     
@@ -539,7 +539,7 @@ def export_data(request):
             # Заголовки
             ws.append([
                 "ID", "Тип операции", "Номер партии", "Продукция",
-                "Дата операции", "Количество (кг)", "Причина", "Документ", "Примечание"
+                "Дата операции", "Количество", "Причина", "Документ", "Примечание"
             ])
             operations = Operation.objects.all()
             for op in operations:
@@ -558,7 +558,7 @@ def export_data(request):
                 ])
         elif export_type == "warehouse":
             ws.title = "Складские остатки"
-            ws.append(["Код продукции", "Наименование", "Текущий остаток (кг)"])
+            ws.append(["Код продукции", "Наименование", "Текущий остаток"])
             warehouses = Warehouse.objects.select_related('nomenclature').all()
             for w in warehouses:
                 ws.append([w.nomenclature.code, w.nomenclature.name, w.current_quantity])

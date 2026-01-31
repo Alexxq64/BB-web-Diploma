@@ -197,7 +197,7 @@ class LiveBatch(models.Model):
     current_quantity = models.FloatField(
         "Текущий остаток", 
         default=0,
-        validators=[MinValueValidator(0)]  # ← проверка на >= 0
+        validators=[MinValueValidator(0)]  # проверка на >= 0
     )
     
     class Meta:

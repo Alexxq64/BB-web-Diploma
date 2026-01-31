@@ -37,7 +37,7 @@ class Command(BaseCommand):
             batch = ProductBatch.objects.create(
                 nomenclature=nom,
                 batch_number=f"TEST-{nom.code}-001",
-                quantity=100.0,  # ← ИЗМЕНЕНО: было weight_kg
+                quantity=100.0,  
                 production_date=prod_date,
                 reception_date=None,
                 expiration_date=exp_date
